@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir>
+
+# fail fast
+set -ueo pipefail
+
+# debug
+# set -x
+
+# clean up leaking environment
+unset GIT_DIR
+
+source /dev/stdin <<< "$(curl -s --retry 3 https://lang-common.s3.amazonaws.com/buildpack-stdlib/v4/stdlib.sh)"
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+BUILDPACK_DIR="$(dirname $(dirname "$0"))"
+CLI_URL="https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-07-26/bin/linux/amd64/aws-iam-authenticator"
+
+puts_step "Fetching and vendoring AWS IAM Authenticator for Kubernetes into slug"
+rm -rf "$BUILD_DIR/.aws/aws-iam-authenticator"
+mkdir -p "$BUILD_DIR/.aws/aws-iam-authenticator"
+mkdir -p "$BUILD_DIR/.aws/bin"
+cd "$BUILD_DIR/.aws/aws-iam-authenticator"
+
+if [[ -z "$(which curl)" ]]; then
+  wget -qO- $CLI_URL | tar xJ --strip-components 1
+else
+  curl -s --retry 3 $CLI_URL | tar xJ --strip-components 1
+fi
+ln -s "../aws-iam-authenticator/aws-iam-authenticator" "$BUILD_DIR/.aws/bin/aws-iam-authenticator"
+
+puts_step "Installing profile.d script"
+mkdir -p "$BUILD_DIR/.profile.d"
+cat <<EOF > "$BUILD_DIR/.profile.d/aws-iam-authenticator.sh"
+export PATH="\$PATH:\$HOME/.aws/bin"
+EOF
+chmod +x "$BUILD_DIR/.profile.d/aws-iam-authenticator.sh"
+
+"$BUILD_DIR/.aws/bin/aws-iam-authenticator" help
+puts_step "AWS IAM Authenticator for Kubernetes installation done"

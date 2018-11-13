@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# bin/detect <build-dir>
+
+echo 'aws-iam-authenticator'
+exit 0
