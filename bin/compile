@@ -17,25 +17,23 @@ CACHE_DIR=$2
 BUILDPACK_DIR="$(dirname $(dirname "$0"))"
 CLI_URL="https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-07-26/bin/linux/amd64/aws-iam-authenticator"
 
-puts_step "Fetching and vendoring AWS IAM Authenticator for Kubernetes into slug"
-rm -rf "$BUILD_DIR/.aws/aws-iam-authenticator"
-mkdir -p "$BUILD_DIR/.aws/aws-iam-authenticator"
-mkdir -p "$BUILD_DIR/.aws/bin"
-cd "$BUILD_DIR/.aws/aws-iam-authenticator"
+CLI_DIST=aws-iam-authenticator
+CLI_HOME=$BUILD_DIR/.aws-iam-authenticator
 
-if [[ -z "$(which curl)" ]]; then
-  wget -qO- $CLI_URL | tar xJ --strip-components 1
-else
-  curl -s --retry 3 $CLI_URL | tar xJ --strip-components 1
-fi
-ln -s "../aws-iam-authenticator/aws-iam-authenticator" "$BUILD_DIR/.aws/bin/aws-iam-authenticator"
+puts_step "Fetching and vendoring AWS IAM Authenticator for Kubernetes into slug"
+rm -rf "$CLI_HOME"
+mkdir -p "$CLI_HOME"
+cd "$CLI_HOME"
+
+curl --progress-bar --retry 3 -o $CLI_DIST $CLI_URL
+chmod +x "$CLI_HOME/$CLI_DIST"
 
 puts_step "Installing profile.d script"
 mkdir -p "$BUILD_DIR/.profile.d"
-cat <<EOF > "$BUILD_DIR/.profile.d/aws-iam-authenticator.sh"
-export PATH="\$PATH:\$HOME/.aws/bin"
+cat <<EOF > "$BUILD_DIR/.profile.d/$CLI_DIST.sh"
+export PATH="\$PATH:\$HOME/.aws-iam-authenticator"
 EOF
-chmod +x "$BUILD_DIR/.profile.d/aws-iam-authenticator.sh"
+chmod +x "$BUILD_DIR/.profile.d/$CLI_DIST.sh"
+chmod +x "$CLI_HOME/$CLI_DIST"
 
-"$BUILD_DIR/.aws/bin/aws-iam-authenticator" help
 puts_step "AWS IAM Authenticator for Kubernetes installation done"
